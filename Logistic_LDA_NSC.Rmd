@@ -1,0 +1,514 @@
+---
+title: "Prediction of Coronary Heart Disease(CHD) using South African Heart Disease Data"
+author: "Shantam Gupta"
+date: "February 16, 2017"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+```{r,include=F,warning=F}
+library(corrplot)
+library(ROCR)
+library(MASS)
+library(gmodels)
+library(glmpath)
+library(pamr)
+```
+
+#1. 
+ Data preparation and exploration
+(a) Select the training set: Download the data. Partition the dataset into a training
+and a validation subsets of equal size, by randomly selecting rows in the training
+set.
+(b) Data exploration: Consider the training set only. Report one-variable summary
+statistics, two-variable summary statistics, and discuss your findings (e.g., presence
+of highly correlated predictors, categorical predictors, missing values, outliers etc).
+```{r cache=T}
+
+x <-read.csv("https://statweb.stanford.edu/~tibs/ElemStatLearn/datasets/SAheart.data",header = T)
+
+#checking for missing valaues in x 
+x[is.na(x),]
+x <- x[,-1]
+#no missing values found in dataset
+set.seed(100)
+
+#splitting the dataset into 50% train and  50 % test data
+train <- x[sample(x=1:nrow(x), size=nrow(x)*.5),]
+test <- x[!(rownames(x) %in% rownames(train)),]
+
+#one variable summary
+summary(train)
+dim(train)
+str(train)
+
+#famhist is a qualitaive predictors so replacing Absent with 0 and Present with 1
+levels(train$famhist) <- c(0,1)
+train$famhist <- as.numeric(train$famhist)
+
+
+levels(test$famhist) <- c(0,1)
+test$famhist <- as.numeric(test$famhist)
+
+
+
+
+
+#pairwise correlation
+c<-cor(train)
+c
+corrplot(c,type="lower",method="color")
+# 1) age and adiposity 2) adiposity and obesity seem to be moderately  pairwise correlated to each other in this data set
+pairs(train)
+
+```
+
+# 2. 
+Fit logistic regression on the training set. Perform variable selection using all
+subsets selection and AIC or BIC criteria. [Hint: it may be interesting to also consider
+statistical interactions]
+```{r, cache=TRUE}
+#Using all the predictors
+fit.train1 <- glm(chd ~., family=binomial, data=train)
+summary(fit.train1)
+
+```
+Famhist,Typea and Age  have low p-value and hence seem to show high positive association with  the logit's  ratio.
+
+1) A unit change in tobacco would cause the logit's ratio to increase by  0.054307 
+
+2) A unit change in famhist would cause the logit's ratio to increase by 0.890727 
+
+3) A unit change in age would cause the logit's ratio to increase by   0.041402
+
+4) A unit change in ldl would cause the logit's ratio to increase by   0.128944
+
+5) A unit change in typea would cause the logit's ratio to increase by 0.035261
+
+6) A unit change in sbp would cause the logit's ratio to increase by 0.013888
+
+7) A unit change in alcohol would cause the logit's ratio to increase by -0.102205 
+
+8) A unit change in obesity  would cause the logit's ratio to increase by  -0.102205
+
+9) A unit change in adiposity would cause the logit's ratio to increase by 0.042611
+
+
+
+
+```{r}
+# stepwise variable selection based on AIC (k = 1)
+step.train.aic <- step(fit.train1, k=2, trace=F) 
+step.train.aic$anova
+
+#based on BIC (k = logn)
+step.train.bic <- step(fit.train1, k=log(nrow(train)), trace=F) 
+step.train.bic$anova
+
+
+```
+It is quite evident from the AIC and BIC criteria than removing some of the predictors will cause the deviance to decrease 
+
+- Predictors : adiposity, alcohol,  can be removed based on aic 
+
+- Predictors : alcohol,adiposity, obesity, typea, tobacco,sbp, and ldl  can be removed based on bic
+
+*Here we will only remove the predictors based on aic criteria as it penalizes more for increase in predictors.
+
+
+```{r}
+# Constructing the glm model 2 after removing the predictors that can decrease AIC
+fit.train2 <- glm(chd ~ tobacco + age + famhist + ldl + typea + sbp  + obesity , family=binomial, data=train)
+summary(fit.train2)
+# Note the change in AIC from 267.11 to 264.39
+```
+
+```{r}
+#plotting the ROC curve for both the models 1 & 2 
+
+#Model 1 using all predictors
+# calculate predicted probabilities on the same training set using model 1
+scores <- predict(fit.train1, newdata=train, type="response")
+
+
+# prediction on the training set using model 1 
+c <- table(true= train[,10], predict=scores > 0.5)
+
+ #prediction accuracy of our model 1 is 0.7272727
+ sum(diag(prop.table(c)))
+
+
+# compare predicted probabilities to labels, for varying probability cutoffs
+pred <- prediction(scores, labels=train$chd )
+perf <- performance(pred, "tpr", "fpr")
+
+# plot the ROC curve
+log_m1_train <- plot(perf, colorize=T, main="logistic regression using all predictors for train data ROC curve")
+
+
+#  the area under the ROC curve  for model 1 is 0.7791297
+log_m1_train_auc <- unlist(attributes(performance(pred, "auc"))$y.values)
+log_m1_train_auc
+
+
+
+# Model 1 prediction with test data 
+pred.glmpath.valid <- predict(fit.train1, newx=as.matrix(train[,-10]), type="response")
+
+ 
+# ROC on the test set
+pred <- prediction( predictions=pred.glmpath.valid, labels=test[,10] )
+perf <- performance(pred, "tpr", "fpr")
+log_m1_test <- plot(perf, colorize=T, main="logistic regression using all predictors for test data ROC curve")
+
+
+#  the area under the ROC curve for test data is 0.4430769
+log_m1_test_auc <-  unlist(attributes(performance(pred, "auc"))$y.values)
+log_m1_test_auc
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+#Model 2 using only tobacco,age,ldl,typea and famhist as predictors
+# calculate predicted probabilities on the same training set using model 2 
+scores <- predict(fit.train2, newdata=train, type="response")
+
+# prediction on the training set using model 2
+c <- table(true= train[,10], predict=scores > 0.5)
+
+ #prediction accuracy of our model 2 is 0.7445887
+ sum(diag(prop.table(c)))
+
+
+# compare predicted probabilities to labels, for varying probability cutoffs
+pred <- prediction(scores, labels=train$chd )
+perf <- performance(pred, "tpr", "fpr")
+
+# plot the ROC curve
+log_m2_train <- plot(perf, colorize=T, main="logistic regression after variable selectcion using AIC for train data ROC curve")
+
+
+#the area under the ROC curve  for model 2 is  0.7758259
+log_m2_train_auc <- unlist(attributes(performance(pred, "auc"))$y.values)
+log_m2_train_auc
+
+# Model 2 prediction with test data 
+pred.glmpath.valid <- predict(fit.train2, newx=as.matrix(train[,-10]), type="response")
+
+ 
+# ROC on the test set
+pred <- prediction( predictions=pred.glmpath.valid, labels=test[,10] )
+perf <- performance(pred, "tpr", "fpr")
+log_m2_test <- plot(perf, colorize=T, main="logistic regression after variable selectcion using AIC for for test data ROC curve")
+
+
+#  the area under the ROC curve for test data is  0.4481197
+log_m2_test_auc <-  unlist(attributes(performance(pred, "auc"))$y.values)
+log_m2_test_auc 
+
+```
+
+The prediction accuracy for correct no of classifications is better in model 2 : 0.7445887 than in model 1: 0.7272727. 
+
+Area under the ROC curve is nearly the same for both the models  0.7791297 for model 1 and 0.7758259 for model 2. 
+Hence we will choose a model with higher predicton power.
+
+
+
+#3. 
+(10pts) Fit LDA on the training set, using the standard workflow.
+
+
+Assumptions for LDA
+```{r}
+
+#looking at standard deviation of each predictor in train data
+s <- apply(train[,-10],2,function(x){sd(as.double(x))})
+
+#Checking Normality Assumptions
+#looking at histograms of each predictor in train data
+s <- apply(train[,-10],2,function(x){hist(as.numeric(x))})
+
+#looking at the qqplots for each predictor in the train data
+ qq <- apply(train[,-10],2,function(x){qqnorm(as.numeric(x))
+                                       qqline(as.numeric(x))})
+
+```
+
+
+LDA assumptions Violations
+
+1) The variance is not the same in all predictors. This violates the assumptions of lda
+
+2)  We need to remove the categorical predictor : famhist as it violates the assumption that the predictors should be continuos and have a normal distribution.But through the aic and logistic regression anlysis we know that it is an important predictor and hence we will treat as a numercic integer (assigning 0 for absent and 1 for present)
+
+3) tobacco, famhist and alcohol don't approximate normal distribution as seen from their histograms
+
+4) Only typea seems to approximate a true normal random variable distribution's behavior as inferrred from the Q-Q Plots. Rest all predictors seems to suggest that the the normal distribution curve is skewed or not normal at all.
+
+
+```{r}
+fit.lda <- lda(chd ~ age + tobacco + alcohol + typea + adiposity + sbp + ldl +famhist + obesity, data=train, cv=TRUE)
+
+# prediction on the training set
+predict.lda <- predict(fit.lda, train[,-10])
+c <- table(true= train[,10], predict=predict.lda$class)
+
+#using better visualization for confusion matrix
+ CrossTable(predict.lda$class,train[,10])
+
+ #prediction accuracy of our model is 0.7489177
+ sum(diag(prop.table(c)))
+
+
+# ROC on the training set
+scores <- predict(fit.lda, newdata= train[,-10])$posterior[,2]
+pred <- prediction( scores, labels= train[,10])
+perf <- performance(pred, "tpr", "fpr")
+lda_train <- plot(perf, colorize=T, main="LDA for train data ROC curve ")
+
+
+#  the area under the ROC curve for train data is  0.7768735
+lda_train_auc <- unlist(attributes(performance(pred, "auc"))$y.values)
+lda_train_auc 
+
+# prediction on the validation set
+predict.lda <- predict(fit.lda, test[,-10])
+c <- table(true= test[,10], predict=predict.lda$class)
+
+#prediction accuracy of our model is 0.7575758
+ sum(diag(prop.table(c)))
+
+# ROC on the validation set
+scores <- predict(fit.lda, newdata= test[,-10])$posterior[,2]
+pred <- prediction( scores, labels= test[,10] )
+perf <- performance(pred, "tpr", "fpr")
+lda_test <- plot(perf, colorize=T, main="LDA for test data ROC curve")
+
+
+# the area under the ROC curve for test data is 0.7911111
+lda_test_auc <- unlist(attributes(performance(pred, "auc"))$y.values)
+lda_test_auc 
+```
+
+
+
+# 4 
+(10pts) Fit logistic regression with Lasso regularization on the training set.
+(a) Produce and interpret the plot of paths of the individual coefficients.
+(b) Produce the plot of regularized parameter versus cross-validated predicted error.
+(c) Select regularization parameter, and refit the model with this parameter.
+(d) Fit the model with the selected predictors only on the full training set.
+```{r}
+
+# selection of the parameter lambda
+fit.cv.glmpath <- cv.glmpath(x=as.matrix(train[,-10]),y=train[,10], family=binomial, nfold=10, plot.it=T)
+
+# cross-validated prediction on the training set
+fit.cv.glmpath1 <- cv.glmpath(x=as.matrix(train[,-10]),y=train[,10], family=binomial, nfold=10, plot.it=T, type="response")
+
+
+# parameter value that minimizes cross-validated error is 0.7777777777
+cv.s <- fit.cv.glmpath$fraction[which.min(fit.cv.glmpath$cv.error)]
+
+
+
+# refit the model without cross-validation
+fit.glmpath <- glmpath(x=as.matrix(train[,-10]),
+                  y=train[,10], family=binomial)
+
+# plot the path
+par(mfrow=c(1,1), mar=c(4,4,4,8))
+plot(fit.glmpath, xvar="lambda")
+#looking at the plot we will select coefficients value for  lambda =  0.7272727 value as it has the minimal cross validation error. ALso note that the value of coefficient of alcohol is zero at this lambda. obesity has zero coefficient
+
+
+
+# in-sample predictive accuracy
+
+#selecting coefficients with lambda value that minimes cross validation erro
+pred.coef <- predict(fit.glmpath, s=cv.s, mode="norm.fraction", type="coefficients")
+pred.coef
+pred.glmpath.train <- predict(fit.glmpath, newx=as.matrix(train[,-10]), s=cv.s, 
+			mode="norm.fraction", type="response")
+c <- table(true=train[,10], predicted=pred.glmpath.train > 0.5)
+
+#prediction accuracy of our model with train data is 0.7272727
+ sum(diag(prop.table(c)))
+
+
+
+# predictive accuracy on a validation set
+pred.coef <- predict(fit.glmpath, s=cv.s, mode="norm.fraction", type="coefficients")
+pred.glmpath.valid <- predict(fit.glmpath, newx=as.matrix(test[,-10]), s=cv.s, 
+			mode="norm.fraction", type="response")
+c <- table(true=test[,10], predicted=pred.glmpath.valid > 0.5)
+      
+
+#prediction accuracy of our model with test data  is  0.7705628
+ sum(diag(prop.table(c)))
+
+ 
+ 
+ 
+ # ROC on the training set
+pred <- prediction( predictions=pred.glmpath.train, labels=train[,10] )
+perf <- performance(pred, "tpr", "fpr")
+log_m1_reg_train <- plot(perf, colorize=T, main="logistic regression with regularization using all predictors for train data ROC curve")
+
+
+#  the area under the ROC curve for train data is 0.7780822
+log_m1_reg_train_auc <-  unlist(attributes(performance(pred, "auc"))$y.values)
+log_m1_reg_train_auc
+
+# ROC on the validation se
+pred <- prediction( predictions=pred.glmpath.valid, labels=test[,10])
+perf <- performance(pred, "tpr", "fpr")
+log_m1_reg_test <-  plot(perf, colorize=T,main="logistic regression with regularization using all predictors for test data ROC curve")
+
+
+# the area under the ROC curve for test data  is 0.8
+log_m1_reg_test_auc <- unlist(attributes(performance(pred, "auc"))$y.values)
+log_m1_reg_test_auc
+
+
+
+```
+
+# 5. 
+ Fit the nearest shrunken centroids model on the training set.
+(a) Use cross-validation to select the best regularization parameter.
+1
+(b) Refit the model with the selected regularization parameter
+(c) Visualize the centroids of the selected model
+
+```{r}
+# Reformat the dataset for parm
+pamrTrain <- list(x=t(as.matrix(train[,-10])), y=train[,10],genenames=as.character(1:231))
+pamrValid <- list(x=t(as.matrix(test[,-10])), y=test[,10],genenames=as.character(1:231))
+
+# Fit the classifier on the entire training set
+fit.pamr <- pamr.train(pamrTrain)
+
+# Use cross-validation to select the best regularization parameter
+fit.cv.pamr <- pamr.cv(fit.pamr, pamrTrain)
+
+#selecting minimum value of threshold 
+fit.cv.pamr$threshold[which.min(fit.cv.pamr$error)]
+
+# Manually select the threshold depending on the plots and on the confusion matrix
+pamr.plotcv(fit.cv.pamr)
+
+
+
+#Let's compare thresholds to illustrate the effect of shrinkage
+pamr.confusion(fit.cv.pamr, threshold=0.197)
+pamr.confusion(fit.cv.pamr, threshold= 3.5)
+
+# Refit the classifier on the full dataset, but using the threshold
+fit.pamr <- pamr.train(pamrTrain, threshold=1.07)
+
+pamr.plotcen(fit.pamr,pamrTrain, threshold=1.07)
+
+# ROC on the training set
+pred.pamr.train <- pamr.predict(fit.pamr, newx=pamrTrain$x, threshold=1.07, type="posterior")[,2]
+pred <- prediction(predictions=pred.pamr.train, labels= train[,10])
+perf <- performance(pred, "tpr", "fpr")
+nsc_train <- plot(perf, colorize=T, main="Nearest shrunken centroids for train data ROC Curve")
+
+
+# The area under the ROC curve for train data is 0.7217566
+nsc_train_auc <- unlist(attributes(performance(pred, "auc"))$y.values)
+nsc_train_auc
+
+# ROC on the validation set
+pred.pamr.valid <- pamr.predict(fit.pamr, newx=pamrValid$x, threshold=1.07 ,type="posterior")[,2]
+pred <- prediction(predictions=pred.pamr.valid, labels= test[,10])
+perf <- performance(pred, "tpr", "fpr")
+nsc_test <- plot(perf, colorize=T, main="Nearest shrunken centroids for test data ROC curve",)
+
+
+# The area under the ROC curve for the test data is 0.7190598
+nsc_test_auc <- unlist(attributes(performance(pred, "auc"))$y.values)
+nsc_test_auc 
+```
+
+
+#6. 
+Evaluate the performance of the classifiers
+(a) Evaluate the performance of the classifiers using ROC curves on the training set.
+(b) Evaluate the performance of the classifiers using ROC curves on the validation set.
+(c) Summarize your findings. How do the results differ between the training and the
+validation set? Which approach(es) perform(s) better on the validation set? What
+is are the reasons for this difference in performance? Which models are more
+interpretable?
+```{r}
+## ROC for Train Data 
+#logistic model 1 with all predictors
+log_m1_train_auc
+
+#logistic model 2 with variable selection using aic criteria
+log_m2_train_auc
+
+#logistic model with regularization
+log_m1_reg_train_auc
+
+
+#linear discriminant model 
+lda_train_auc
+
+# shrunken centroid method
+nsc_train_auc
+
+
+
+
+## ROC for Test Data 
+
+#logistic model 1 with all predictors
+log_m1_test_auc
+
+#logistic model 2 with variable selection using aic criteria
+log_m2_test_auc
+
+#logistic model with regularization
+log_m1_reg_test_auc
+
+
+#linear discriminant model 
+lda_test_auc
+
+# shrunken centroid method
+nsc_test_auc
+
+
+```
+
+Some Conclusions for AUC - ROC curve 
+
+1) All the logistic models have nearly the same area under ROC curve for the train data. 
+
+2) The lda and logistic models have nearly the same area under ROC curve for train data. 
+The 
+3) The shrunken centroid model seems to have a slightly lesser auc value than other models for both the test and train data . However it has  an auc which is same for both the train and test data 
+
+3) The logistic model with all predictors gives the highest area under the ROC curve for train data but performs poorly on test data 
+
+4)All the models showed an increase in area under curve of ROC for test data.
+
+5) The data is split into equal halves of  training and test data. This helps to prevent overfitting the model on train data and could be a major reason for high prediction accuracy on test data.
+
+6) The fit for test data is poor for logistic regression models  excpet for regularization.
+
+7) Considering the fit on the test and train data the logistic regression model with regularization seems to be the optimal choice. 
+
+
