@@ -983,17 +983,17 @@ Some Conclusions for AUC - ROC curve
 1) All the logistic models have nearly the same area under ROC curve for the train data. 
 
 2) The lda and logistic models have nearly the same area under ROC curve for train data. 
-The 
+
 3) The shrunken centroid model seems to have a slightly lesser auc value than other models for both the test and train data . However it has  an auc which is same for both the train and test data 
 
-3) The logistic model with all predictors gives the highest area under the ROC curve for train data but performs poorly on test data 
+4) The logistic model with all predictors gives the highest area under the ROC curve for train data but performs poorly on test data 
 
-4)All the models showed an increase in area under curve of ROC for test data.
+5) All the models showed an increase in area under curve of ROC for test data.
 
-5) The data is split into equal halves of  training and test data. This helps to prevent overfitting the model on train data and could be a major reason for high prediction accuracy on test data.
+6) The data is split into equal halves of  training and test data. This helps to prevent overfitting the model on train data and could be a major reason for high prediction accuracy on test data.
 
-6) The fit for test data is poor for logistic regression models  excpet for regularization.
+7) The fit for test data is poor for logistic regression models  excpet for regularization.
 
-7) Considering the fit on the test and train data the logistic regression model with regularization seems to be the optimal choice. 
+8) Considering the fit on the test and train data the logistic regression model with regularization seems to be the optimal choice. 
 
 
