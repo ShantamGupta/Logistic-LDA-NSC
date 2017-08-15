@@ -225,7 +225,7 @@ Hence we will choose a model with higher predicton power.
 
 
 #3. 
-(10pts) Fit LDA on the training set, using the standard workflow.
+Fit LDA on the training set, using the standard workflow.
 
 
 Assumptions for LDA
@@ -303,7 +303,7 @@ lda_test_auc
 
 
 # 4 
-(10pts) Fit logistic regression with Lasso regularization on the training set.
+ Fit logistic regression with Lasso regularization on the training set.
 (a) Produce and interpret the plot of paths of the individual coefficients.
 (b) Produce the plot of regularized parameter versus cross-validated predicted error.
 (c) Select regularization parameter, and refit the model with this parameter.
@@ -387,7 +387,6 @@ log_m1_reg_test_auc
 # 5. 
  Fit the nearest shrunken centroids model on the training set.
 (a) Use cross-validation to select the best regularization parameter.
-1
 (b) Refit the model with the selected regularization parameter
 (c) Visualize the centroids of the selected model
 
