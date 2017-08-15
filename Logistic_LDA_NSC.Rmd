@@ -24,9 +24,9 @@ set.
 (b) Data exploration: Consider the training set only. Report one-variable summary
 statistics, two-variable summary statistics, and discuss your findings (e.g., presence
 of highly correlated predictors, categorical predictors, missing values, outliers etc).
-```{r cache=T}
+```{r cache=TRUE}
 
-x <-read.csv("https://statweb.stanford.edu/~tibs/ElemStatLearn/datasets/SAheart.data",header = T)
+x <-read.csv("https://web.stanford.edu/~hastie/ElemStatLearn/datasets/SAheart.data",header = T)
 
 #checking for missing valaues in x 
 x[is.na(x),]
