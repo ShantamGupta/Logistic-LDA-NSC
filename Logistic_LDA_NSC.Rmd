@@ -1,11 +1,11 @@
 ---
-title: "Prediction of Coronary Heart Disease(CHD) using South African Heart Disease Data"
+title: Prediction of Coronary Heart Disease(CHD) using South African Heart Disease
+  Data
 author: "Shantam Gupta"
 date: "February 16, 2017"
 output:
-  html_document: default
-  pdf_document: default
-  word_document: default
+  html_document:
+   keep_md: yes
 ---
 ```{r,include=F,warning=F}
 library(corrplot)
