@@ -434,7 +434,7 @@ Hence we will choose a model with higher predicton power.
 
 
 
-#3. 
+# 3. 
 Fit LDA on the training set, using the standard workflow.
 
 
@@ -585,7 +585,7 @@ lda_test_auc
 
 
 
-# 4 
+# 4. 
  Fit logistic regression with Lasso regularization on the training set.
 (a) Produce and interpret the plot of paths of the individual coefficients.
 (b) Produce the plot of regularized parameter versus cross-validated predicted error.
@@ -875,7 +875,7 @@ nsc_test_auc
 ```
 
 
-#6. 
+# 6. 
 Evaluate the performance of the classifiers
 (a) Evaluate the performance of the classifiers using ROC curves on the training set.
 (b) Evaluate the performance of the classifiers using ROC curves on the validation set.
